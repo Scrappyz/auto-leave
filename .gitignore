@@ -6,3 +6,5 @@ project/__pycache__
 !test/
 !test/**
 !README.md
+!resources/
+!resources/**
