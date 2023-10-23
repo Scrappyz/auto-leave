@@ -63,6 +63,8 @@ def main():
             leave()
             break
         time.sleep(frequency)
+        
+    print("[Program Finished Successfully]")
 
 if __name__ == "__main__":
     try:
