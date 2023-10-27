@@ -2,11 +2,45 @@ import pyautogui
 import argparse
 import time
 import os
+import json
 from pytesseract import pytesseract
+from pynput import mouse, keyboard
 # from PIL import Image, ImageFilter
+
+positions = [[-1, -1], [-1, -1]]
+json_data = {}
+
+def mouse_click(x, y, button, pressed):
+    global positions
+    if pressed:
+        positions[0] = [x, y]
+    else:
+        positions[1] = [x, y]
+        return False
+
+def shift_press(key):
+    if key == keyboard.Key.shift:
+        with mouse.Listener(on_click=mouse_click) as listener:
+            listener.join()
+        return False
+    
+def getPosition():
+    with keyboard.Listener(on_press=shift_press) as listener:
+        listener.join()
+        
+def getScreenshotFromPosition(position):
+    ss_pos = (position[0][0], position[0][1], position[1][0] - position[0][0], position[1][1] - position[0][1])
+    return ss_pos
 
 def find(image_path: str):
     print(pyautogui.locateOnScreen(image_path))
+    
+def savePositionToJson(key: str, val: tuple, file_path: str):
+    with open(file_path, 'r') as f:
+        json_data = json.load(f)
+        json_data[key] = val
+    with open(file_path, 'w') as f:
+        f.write(json.dumps(json_data, indent=4))
 
 def convertInterval(freq) -> float:
     if type(freq) != str:
@@ -43,20 +77,33 @@ def main():
     pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
     current_path = os.path.dirname(__file__)
     
-    # time.sleep(3)
-    # find(os.path.join(current_path, "resources/test.png"))
-    # pyautogui.screenshot(region=(1781, 353, 60, 37)).save(os.path.join(current_path, "resources/test2.png"))
-    
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", "--delay", nargs="?", default="5", help="delay before program start", dest="delay")
     parser.add_argument("-t", "--threshold", nargs="?", type=int, default=10, help="the amount before leaving", dest="threshold")
     parser.add_argument("-f", "--frequency", nargs="?", default=10, help="how frequent to check the number of people", dest="frequency")
-    parser.add_argument("-v", "--version", action="version", version="%(prog)s 0.1.1-alpha")
+    parser.add_argument("-v", "--version", action="version", version="%(prog)s 0.2.0-alpha")
+    
+    subparser = parser.add_subparsers(dest="command")
+    pos = subparser.add_parser("position", help="save position")
+    pos.add_argument("--button", action="store_true", help="save position of leave button", dest="button")
+    pos.add_argument("--people", action="store_true", help="save position of number of people", dest="people")
     
     args = parser.parse_args()
-    delay = convertInterval(args.delay)
-    threshold = args.threshold
-    frequency = convertInterval(args.frequency)
+    delay = 0
+    threshold = 0
+    frequency = 1
+    if args.command == "position":
+        if args.button or args.people:
+            getPosition()
+            if args.button:
+                savePositionToJson("button", positions, os.path.join(current_path, "sample.json"))
+            elif args.people:
+                savePositionToJson("people", positions, os.path.join(current_path, "sample.json"))
+        exit()
+    else:
+        delay = convertInterval(args.delay)
+        threshold = args.threshold
+        frequency = convertInterval(args.frequency)
     
     time.sleep(delay)
     print("[START] Press Ctrl+C to end process")
